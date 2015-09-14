@@ -14,7 +14,8 @@ import requests
 
 
 def create_command(args):
-    file_paths = args.file_paths
+    file_paths = [os.path.abspath(p) for p in args.file_paths]
+    paths_gist_filenames = _generate_gist_filenames(file_paths)
     description = args.description
     public = args.public
     if args.anonymous:
@@ -26,12 +27,42 @@ def create_command(args):
     client = GithubAPIClient(token)
     try:
         gist_url = client.new_gist(
-            file_paths, description=description, public=public)
+            paths_gist_filenames, description=description, public=public)
         print(gist_url)
         return 0
     except GithubAPIException as e:
         github_api_exception_to_stderr('Failed to create gist', e)
         return 1
+
+
+def _generate_gist_filenames(absolute_paths):
+    """
+    Return a list of (file_path, gist_file_name) tuples. The
+    ``gist_file_name`` is contextual based on the path component
+    common to all of the files.
+
+    :param file_paths:  Iterable of absolute paths to files.
+    """
+    prefix = _real_commonprefix(absolute_paths)
+    paths_gist_filenames = []
+    for path in absolute_paths:
+        gist_filename = '-'.join(
+            os.path.relpath(path, prefix).split(os.pathsep))
+        paths_gist_filenames.append((path, gist_filename))
+    return paths_gist_filenames
+
+
+def _real_commonprefix(absolute_paths):
+    """
+    ``os.path.commonprefix`` might return invalid paths, so we verify
+    the result ends with pathsep or is empty.
+    """
+    assert all(os.path.isabs(p) for p in absolute_paths)
+    candidate_prefix = os.path.commonprefix(absolute_paths)
+    if not candidate_prefix or candidate_prefix.endswith(os.pathsep):
+        return '/'
+    else:
+        return candidate_prefix.rpartition(os.pathsep)[0]
 
 
 def token_command(args):
@@ -66,7 +97,7 @@ class GithubAPIException(Exception):
 def github_api_exception_to_stderr(message, exc):
     print(message, file=sys.stderr)
     print(exc.message, file=sys.stderr)
-    pprint.pprint(exc.data, stream=sys.stderr)
+    pprint.pprint(exc.context, stream=sys.stderr)
 
 
 class GithubAPIClient(object):
@@ -81,7 +112,7 @@ class GithubAPIClient(object):
     def _url(self, path):
         return 'https://api.github.com/' + path.lstrip('/')
 
-    def new_gist(self, file_paths, description=u'', public=False):
+    def new_gist(self, paths_gist_filenames, description=u'', public=False):
         """
         Create a new gist with files from the filesystem and return
         the URL to the newly created gist.
@@ -91,11 +122,11 @@ class GithubAPIClient(object):
             u'public': public,
             u'files': {}
         }
-        for path in file_paths:
+        for path, gist_filename in paths_gist_filenames:
             with io.open(path, encoding='utf-8') as f:
                 file_contents = f.read()
-            filename = os.path.basename(path)
-            payload[u'files'][filename] = {u'content': file_contents}
+            print(path, gist_filename)
+            payload[u'files'][gist_filename] = {u'content': file_contents}
 
         response = self._session.post(
             self._url('/gists'), data=json.dumps(payload))
@@ -173,3 +204,26 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+import unittest
+
+
+class PathCalculationTestCase(unittest.TestCase):
+    def test_single(self):
+        path = '/foo/bar.py'
+        result = _generate_gist_filenames([path])
+        self.assertEqual(result, [(path, os.path.basename(path))])
+
+    def test_basic(self):
+        path1 = '/foo/sub1/spam'
+        path2 = '/foo/sub2/eggs'
+        fname1 = 'sub1-spam'
+        fname2 = 'sub2-eggs'
+        result = _generate_gist_filenames(['/foo/sub1/spam', '/foo/sub2/eggs'])
+        expected = [(path1, fname1), (path2, fname2)]
+        self.assertEqual(result, expected)
+
+    def test__real_commonprefix_basic(self):
+        result = _real_commonprefix(['/foo/bar', '/foo/baz'])
+        self.assertEqual(result, '/foo/')

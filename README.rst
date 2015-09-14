@@ -1,8 +1,7 @@
-######
 GistIt
 ######
 
-Created Gists_ from the command line.
+Create Gists_ from the command line.
 
 Requires the Requests_ library. Should work on Python 2.7 and 3.3+.
 
@@ -10,11 +9,10 @@ Requires the Requests_ library. Should work on Python 2.7 and 3.3+.
 .. _Requests: http://docs.python-requests.org/
 
 
-========
 Features
 ========
-
 
 -   Anonymous and authenticated Gist creation.
 -   Public/Private Gists.
 -   Easy token creation, scoped only for Gist (not the rest of GitHub)
+-   Filenames with path context.
