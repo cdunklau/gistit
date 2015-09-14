@@ -227,3 +227,7 @@ class PathCalculationTestCase(unittest.TestCase):
     def test__real_commonprefix_basic(self):
         result = _real_commonprefix(['/foo/bar', '/foo/baz'])
         self.assertEqual(result, '/foo/')
+
+    def test__real_commonprefix_different_depth(self):
+        result = _real_commonprefix(['/foo/bar/spam', '/foo/eggs'])
+        self.assertEqual(result, '/foo/')
