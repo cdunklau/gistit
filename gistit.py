@@ -12,59 +12,6 @@ import uuid
 import requests
 
 
-
-def create_command(args):
-    file_paths = [os.path.abspath(p) for p in args.file_paths]
-    paths_gist_filenames = _generate_gist_filenames(file_paths)
-    description = args.description
-    public = args.public
-    if args.anonymous:
-        token = None
-    else:
-        with open(args.token) as f:
-            token = json.load(f)['token']
-        
-    client = GithubAPIClient(token)
-    try:
-        gist_url = client.new_gist(
-            paths_gist_filenames, description=description, public=public)
-        print(gist_url)
-        return 0
-    except GithubAPIException as e:
-        github_api_exception_to_stderr('Failed to create gist', e)
-        return 1
-
-
-def _generate_gist_filenames(absolute_paths):
-    """
-    Return a list of (file_path, gist_file_name) tuples. The
-    ``gist_file_name`` is contextual based on the path component
-    common to all of the files.
-
-    :param file_paths:  Iterable of absolute paths to files.
-    """
-    prefix = _real_commonprefix(absolute_paths)
-    paths_gist_filenames = []
-    for path in absolute_paths:
-        gist_filename = '-'.join(
-            os.path.relpath(path, prefix).split(os.pathsep))
-        paths_gist_filenames.append((path, gist_filename))
-    return paths_gist_filenames
-
-
-def _real_commonprefix(absolute_paths):
-    """
-    ``os.path.commonprefix`` might return invalid paths, so we verify
-    the result ends with pathsep or is empty.
-    """
-    assert all(os.path.isabs(p) for p in absolute_paths)
-    candidate_prefix = os.path.commonprefix(absolute_paths)
-    if not candidate_prefix or candidate_prefix.endswith(os.pathsep):
-        return '/'
-    else:
-        return candidate_prefix.rpartition(os.pathsep)[0]
-
-
 def token_command(args):
     username = args.username
     password = getpass.getpass('Password for {0}: '.format(username))
@@ -86,6 +33,129 @@ def token_command(args):
     }
     with open(token_file, 'w') as f:
         json.dump(obj, f)
+
+
+def create_command(args):
+    file_paths = [os.path.abspath(p) for p in args.file_paths]
+    try:
+        paths_gist_filenames = _generate_gist_filenames(
+            file_paths, args.contextual)
+    except DuplicateFilenames as e:
+        print(str(e), file=sys.stderr)
+        print('Use contextual behavior (default) to avoid this', file=sys.stderr)
+        sys.exit(1)
+    description = args.description
+    public = args.public
+    if args.anonymous:
+        token = None
+    else:
+        with open(args.token) as f:
+            token = json.load(f)['token']
+        
+    client = GithubAPIClient(token)
+    try:
+        gist_url = client.new_gist(
+            paths_gist_filenames, description=description, public=public)
+        print(gist_url)
+        return 0
+    except GithubAPIException as e:
+        github_api_exception_to_stderr('Failed to create gist', e)
+        return 1
+
+
+def make_parser():
+    default_token_file = os.path.expanduser('~/.gistit_token')
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--token', '-t', default=default_token_file,
+        help='Path to token file')
+    subparsers = parser.add_subparsers(
+        dest='command', help='Available commands')
+
+    create_parser = subparsers.add_parser('create', help='Create new gist')
+    create_parser.add_argument(
+        '--description', '-d', default=u'', help='Gist description')
+    create_parser.add_argument(
+        '--public', '-p', action='store_true', help='Create as public gist')
+    create_parser.add_argument(
+        '--anonymous', '-a', action='store_true', help='Create as anonymous')
+    create_parser.add_argument(
+        '--no-contextual', '-C', action='store_false', dest='contextual',
+        help='Use normal filenames, without path context')
+    create_parser.add_argument(
+        'file_paths', metavar='file', nargs='+', help='File to upload')
+    create_parser.set_defaults(func=create_command)
+
+    token_parser = subparsers.add_parser(
+        'token', help='Create a new gist access token and store it in a file')
+    token_parser.add_argument('username', help='Github username or email')
+    token_parser.set_defaults(func=token_command)
+
+    return parser
+
+
+def main():
+    parser = make_parser()
+    args = parser.parse_args()
+    command = args.func
+    sys.exit(command(args))
+
+
+class DuplicateFilenames(Exception):
+    def __init__(self, filename, path1, path2):
+        self.filename = filename
+        self.path1 = path1
+        self.path2 = path2
+
+    def __str__(self):
+        return 'Duplicate filename {0} for paths {1} and {2}'.format(
+            self.filename, self.path1, self.path2)
+
+
+def _generate_gist_filenames(absolute_paths, contextual=True):
+    """
+    Return a list of (file_path, gist_file_name) tuples. The
+    ``gist_file_name`` is contextual based on the path component
+    common to all of the files, unless ``contextual`` is false, then
+    ``gist_file_name`` is merely the basename.
+
+    :param file_paths:  Sequence of absolute paths to files.
+    """
+    if not contextual:
+        paths_gist_filenames = []
+        filenames_to_paths = {}
+        for path in absolute_paths:
+            filename = os.path.basename(path)
+            if filename in filenames_to_paths:
+                raise DuplicateFilenames(
+                    filename, filenames_to_paths[filename], path)
+            filenames_to_paths[filename] = path
+            paths_gist_filenames.append((path, os.path.basename(path)))
+        return paths_gist_filenames
+    prefix = _real_commonprefix(absolute_paths)
+    paths_gist_filenames = []
+    for path in absolute_paths:
+        gist_filename = '-'.join(
+            os.path.relpath(path, prefix).split(os.sep))
+        paths_gist_filenames.append((path, gist_filename))
+    return paths_gist_filenames
+
+
+def _real_commonprefix(absolute_paths):
+    """
+    ``os.path.commonprefix`` might return invalid paths, so we verify
+    the result ends with os.sep.
+    """
+    assert len(absolute_paths)
+    assert all(os.path.isabs(p) for p in absolute_paths)
+    if len(absolute_paths) == 1:
+        return os.path.dirname(absolute_paths[0]) + os.sep
+    candidate_prefix = os.path.commonprefix(absolute_paths)
+    if candidate_prefix.endswith(os.sep):
+        return candidate_prefix
+    else:
+        return candidate_prefix.rpartition(os.sep)[0] + os.sep
 
 
 class GithubAPIException(Exception):
@@ -166,40 +236,6 @@ class GithubAPIClient(object):
             raise GithubAPIException(message, response.json())
 
 
-def make_parser():
-    default_token_file = os.path.expanduser('~/.gistit_token')
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--token', '-t', default=default_token_file,
-        help='Path to token file')
-    subparsers = parser.add_subparsers(
-        dest='command', help='Available commands')
-
-    create_parser = subparsers.add_parser('create', help='Create new gist')
-    create_parser.add_argument(
-        '--description', '-d', default=u'', help='Gist description')
-    create_parser.add_argument(
-        '--public', '-p', action='store_true', help='Create as public gist')
-    create_parser.add_argument(
-        '--anonymous', '-a', action='store_true', help='Create as anonymous')
-    create_parser.add_argument(
-        'file_paths', metavar='file', nargs='+', help='File to upload')
-    create_parser.set_defaults(func=create_command)
-
-    token_parser = subparsers.add_parser(
-        'token', help='Create a new gist access token and store it in a file')
-    token_parser.add_argument('username', help='Github username or email')
-    token_parser.set_defaults(func=token_command)
-
-    return parser
-
-
-def main():
-    parser = make_parser()
-    args = parser.parse_args()
-    command = args.func
-    sys.exit(command(args))
 
 
 if __name__ == '__main__':
@@ -209,8 +245,8 @@ if __name__ == '__main__':
 import unittest
 
 
-class PathCalculationTestCase(unittest.TestCase):
-    def test_single(self):
+class PathGenerationTestCase(unittest.TestCase):
+    def test_single_yields_only_filename(self):
         path = '/foo/bar.py'
         result = _generate_gist_filenames([path])
         self.assertEqual(result, [(path, os.path.basename(path))])
@@ -224,6 +260,30 @@ class PathCalculationTestCase(unittest.TestCase):
         expected = [(path1, fname1), (path2, fname2)]
         self.assertEqual(result, expected)
 
+    def test_not_contextual(self):
+        path1 = '/foo/sub1/spam'
+        path2 = '/foo/sub2/eggs'
+        fname1 = 'spam'
+        fname2 = 'eggs'
+        result = _generate_gist_filenames(
+            ['/foo/sub1/spam', '/foo/sub2/eggs'],
+            contextual=False)
+        expected = [(path1, fname1), (path2, fname2)]
+        self.assertEqual(result, expected)
+
+    def test_not_contextual_errors_on_duplicate_filenames(self):
+        with self.assertRaises(DuplicateFilenames) as ctx:
+            _generate_gist_filenames(
+                ['/foo/sub1/file', '/foo/sub2/file'], contextual=False)
+        e = ctx.exception
+        self.assertEqual(e.filename, 'file')
+        self.assertEqual(e.path1, '/foo/sub1/file')
+        self.assertEqual(e.path2, '/foo/sub2/file')
+
+    def test__real_commonprefix_single(self):
+        result = _real_commonprefix(['/foo/bar/baz'])
+        self.assertEqual(result, '/foo/bar/')
+
     def test__real_commonprefix_basic(self):
         result = _real_commonprefix(['/foo/bar', '/foo/baz'])
         self.assertEqual(result, '/foo/')
@@ -231,3 +291,19 @@ class PathCalculationTestCase(unittest.TestCase):
     def test__real_commonprefix_different_depth(self):
         result = _real_commonprefix(['/foo/bar/spam', '/foo/eggs'])
         self.assertEqual(result, '/foo/')
+
+    def test__real_commonprefix_nocommon_returns_root(self):
+        result = _real_commonprefix(['/foo/bar', '/spam/eggs'])
+        self.assertEqual(result, '/')
+
+
+class ArgParserTestCase(unittest.TestCase):
+    def test_create_parser_no_contextual(self):
+        args = make_parser().parse_args(
+            ['create', '--no-contextual', 'somefile'])
+        self.assertTrue(args.contextual == False)
+
+    def test_create_parser_contextual(self):
+        args = make_parser().parse_args(
+            ['create', 'somefile'])
+        self.assertTrue(args.contextual == True)
