@@ -243,6 +243,7 @@ if __name__ == '__main__':
 
 
 import unittest
+import subprocess
 
 
 class PathGenerationTestCase(unittest.TestCase):
@@ -307,3 +308,30 @@ class ArgParserTestCase(unittest.TestCase):
         args = make_parser().parse_args(
             ['create', 'somefile'])
         self.assertTrue(args.contextual == True)
+
+
+class ReadmeUsageTestCase(unittest.TestCase):
+    def assertReadmeContainsOutput(self, args):
+        with open('README.rst') as f:
+            readme = f.read()
+
+        cmd_args = [sys.executable, 'gistit.py']
+        cmd_args.extend(args)
+        output_lines = subprocess.check_output(cmd_args).splitlines()
+        output_lines = [line.rstrip() for line in output_lines]
+        indented_output_lines = []
+        for line in output_lines:
+            indented_line = '    ' + line if line else ''
+            indented_output_lines.append(indented_line)
+        indented_output = '\n'.join(indented_output_lines) + '\n'
+        self.assertIn(indented_output, readme)
+
+
+    def test_general(self):
+        self.assertReadmeContainsOutput(['-h'])
+
+    def test_token(self):
+        self.assertReadmeContainsOutput(['token', '-h'])
+
+    def test_create(self):
+        self.assertReadmeContainsOutput(['create', '-h'])
