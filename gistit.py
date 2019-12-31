@@ -246,6 +246,13 @@ import unittest
 import subprocess
 
 
+def check_output(*args, **kwargs):
+    output = subprocess.check_output(*args, **kwargs)
+    if isinstance(output, bytes):
+        return output.decode('utf-8')
+    return output
+
+
 class PathGenerationTestCase(unittest.TestCase):
     def test_single_yields_only_filename(self):
         path = '/foo/bar.py'
@@ -312,18 +319,18 @@ class ArgParserTestCase(unittest.TestCase):
 
 class ReadmeUsageTestCase(unittest.TestCase):
     def assertReadmeContainsOutput(self, args):
-        with open('README.rst') as f:
+        with io.open('README.rst', encoding='utf-8') as f:
             readme = f.read()
 
         cmd_args = [sys.executable, 'gistit.py']
         cmd_args.extend(args)
-        output_lines = subprocess.check_output(cmd_args).splitlines()
+        output_lines = check_output(cmd_args).splitlines()
         output_lines = [line.rstrip() for line in output_lines]
         indented_output_lines = []
         for line in output_lines:
-            indented_line = '    ' + line if line else ''
+            indented_line = u'    ' + line if line else u''
             indented_output_lines.append(indented_line)
-        indented_output = '\n'.join(indented_output_lines) + '\n'
+        indented_output = u'\n'.join(indented_output_lines) + u'\n'
         self.assertIn(indented_output, readme)
 
 
