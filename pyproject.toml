@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools >= 77.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gistit"
+version = "0.2.0-dev"
+dependencies = [
+    "requests >=2.27, <3.0",
+]
+requires-python = ">=3.10"
+authors = [
+    {name = "Colin Dunklau", email = "colin.dunklau@gmail.com"},
+]
+description = "Create Gists from the command line"
+readme = "README.rst"
+license = "MIT"
+license-files = [
+    "LICENSE"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Environment :: Console",
+]
+
+[project.optional-dependencies]
+dev = [
+    "tox >= 4.59.0, < 5.0"
+]

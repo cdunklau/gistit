@@ -3,7 +3,7 @@ GistIt
 
 Create Gists_ from the command line.
 
-Requires the Requests_ library. Should work on Python 2.7 and 3.3+.
+Supports Python 3.10+. Requires the Requests_ library.
 
 .. _Gists: https://gist.github.com/
 .. _Requests: https://requests.readthedocs.io/
@@ -29,7 +29,7 @@ General usage::
         create              Create new gist
         token               Create a new gist access token and store it in a file
 
-    optional arguments:
+    options:
       -h, --help            show this help message and exit
       --token TOKEN, -t TOKEN
                             Path to token file
@@ -43,7 +43,7 @@ Create command::
     positional arguments:
       file                  File to upload
 
-    optional arguments:
+    options:
       -h, --help            show this help message and exit
       --description DESCRIPTION, -d DESCRIPTION
                             Gist description
@@ -58,5 +58,5 @@ Token command::
     positional arguments:
       username    Github username or email
 
-    optional arguments:
+    options:
       -h, --help  show this help message and exit

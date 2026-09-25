@@ -1,0 +1,4 @@
+env_list = ["3.10"]
+
+[env_run_base]
+commands = [["python", "-m", "unittest", "gistit"]]
