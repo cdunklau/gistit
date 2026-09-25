@@ -43,11 +43,8 @@ def create_command(args):
         sys.exit(1)
     description = args.description
     public = args.public
-    if args.anonymous:
-        token = None
-    else:
-        with open(args.token, encoding="utf-8") as f:
-            token = json.load(f)["token"]
+    with open(args.token, encoding="utf-8") as f:
+        token = json.load(f)["token"]
 
     client = GithubAPIClient(token)
     try:
@@ -76,9 +73,6 @@ def make_parser():
     )
     create_parser.add_argument(
         "--public", "-p", action="store_true", help="Create as public gist"
-    )
-    create_parser.add_argument(
-        "--anonymous", "-a", action="store_true", help="Create as anonymous"
     )
     create_parser.add_argument(
         "--no-contextual",

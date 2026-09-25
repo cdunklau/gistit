@@ -12,7 +12,6 @@ Supports Python 3.10+. Requires the Requests_ library.
 Features
 ========
 
--   Anonymous and authenticated Gist creation.
 -   Public/Private Gists.
 -   Easy token creation, scoped only for Gist (not the rest of GitHub)
 -   Filenames with path context (optional).
@@ -37,7 +36,7 @@ General usage::
 Create command::
 
     usage: gistit.py create [-h] [--description DESCRIPTION] [--public]
-                            [--anonymous] [--no-contextual]
+                            [--no-contextual]
                             file [file ...]
 
     positional arguments:
@@ -48,7 +47,6 @@ Create command::
       --description DESCRIPTION, -d DESCRIPTION
                             Gist description
       --public, -p          Create as public gist
-      --anonymous, -a       Create as anonymous
       --no-contextual, -C   Use normal filenames, without path context
 
 Token command::
