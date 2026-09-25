@@ -6,7 +6,7 @@ Create Gists_ from the command line.
 Requires the Requests_ library. Should work on Python 2.7 and 3.3+.
 
 .. _Gists: https://gist.github.com/
-.. _Requests: http://docs.python-requests.org/
+.. _Requests: https://requests.readthedocs.io/
 
 
 Features
