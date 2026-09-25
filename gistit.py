@@ -13,7 +13,7 @@ import requests
 
 def token_command(args):
     username = args.username
-    password = getpass.getpass("Password for {0}: ".format(username))
+    password = getpass.getpass(f"Password for {username}: ")
     token_file = args.token
 
     client = GithubAPIClient()
@@ -24,7 +24,7 @@ def token_command(args):
         github_api_exception_to_stderr("Failed to create new token", e)
         return 1
 
-    print("Saving token to {0}".format(token_file), file=sys.stderr)
+    print(f"Saving token to {token_file}", file=sys.stderr)
     obj = {
         "token_id": token_id,
         "token": token,
@@ -116,8 +116,9 @@ class DuplicateFilenames(Exception):
         self.path2 = path2
 
     def __str__(self):
-        return "Duplicate filename {0} for paths {1} and {2}".format(
-            self.filename, self.path1, self.path2
+        return (
+            f"Duplicate filename {self.filename} for paths "
+            f"{self.path1} and {self.path2}"
         )
 
 
