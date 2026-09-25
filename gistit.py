@@ -10,29 +10,6 @@ import uuid
 import requests
 
 
-def token_command(args):
-    username = args.username
-    password = getpass.getpass(f"Password for {username}: ")
-    token_file = args.token
-
-    client = GithubAPIClient()
-    try:
-        result = client.new_gist_token(username, password)
-        token_id, token, fingerprint = result
-    except GithubAPIException as e:
-        github_api_exception_to_stderr("Failed to create new token", e)
-        return 1
-
-    print(f"Saving token to {token_file}", file=sys.stderr)
-    obj = {
-        "token_id": token_id,
-        "token": token,
-        "fingerprint": fingerprint,
-    }
-    with open(token_file, "w", encoding="utf-8") as f:
-        json.dump(obj, f)
-
-
 def create_command(args):
     file_paths = [os.path.abspath(p) for p in args.file_paths]
     try:
@@ -44,7 +21,7 @@ def create_command(args):
     description = args.description
     public = args.public
     with open(args.token, encoding="utf-8") as f:
-        token = json.load(f)["token"]
+        token = f.readline().strip()
 
     client = GithubAPIClient(token)
     try:
@@ -85,12 +62,6 @@ def make_parser():
         "file_paths", metavar="file", nargs="+", help="File to upload"
     )
     create_parser.set_defaults(func=create_command)
-
-    token_parser = subparsers.add_parser(
-        "token", help="Create a new gist access token and store it in a file"
-    )
-    token_parser.add_argument("username", help="Github username or email")
-    token_parser.set_defaults(func=token_command)
 
     return parser
 
@@ -171,12 +142,12 @@ def github_api_exception_to_stderr(message, exc):
 
 
 class GithubAPIClient(object):
-    def __init__(self, token=None):
+    def __init__(self, token):
         session = requests.Session()
         session.headers["content-type"] = "application/json"
-        session.headers["accept"] = "application/vnd.github.v3+json"
-        if token:
-            session.headers["authorization"] = "token " + token
+        session.headers["accept"] = "application/vnd.github+json"
+        session.headers["x-github-api-version"] = "2026-03-10"
+        session.headers["authorization"] = "token " + token
         self._session = session
 
     def _url(self, path):
@@ -201,32 +172,6 @@ class GithubAPIClient(object):
         info = response.json()
 
         return info["html_url"]
-
-    def new_gist_token(self, username, password):
-        """
-        Create a new authorization token for gist and return
-        the token's ID, the token itself, and the fingerprint.
-        """
-        fingerprint = str(uuid.uuid4())
-        payload = {
-            "scopes": ["gist"],
-            "note": "Created by gistit.py",
-            "fingerprint": fingerprint,
-        }
-        response = self._session.post(
-            self._url("/authorizations"),
-            data=json.dumps(payload),
-            auth=(username, password),
-        )
-
-        self._expect_created(response, "Failed to create authorization token")
-
-        info = response.json()
-        token_id = info["id"]
-        token = info["token"]
-        fingerprint = info["fingerprint"]
-
-        return token_id, token, fingerprint
 
     def _expect_created(self, response, message):
         if response.status_code != 201:
@@ -329,9 +274,6 @@ class ReadmeUsageTestCase(unittest.TestCase):
 
     def test_general(self):
         self.assertReadmeContainsOutput(["-h"])
-
-    def test_token(self):
-        self.assertReadmeContainsOutput(["token", "-h"])
 
     def test_create(self):
         self.assertReadmeContainsOutput(["create", "-h"])
