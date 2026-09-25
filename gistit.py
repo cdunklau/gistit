@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import sys
 import os
-import io
 import json
 import pprint
 import argparse
@@ -30,7 +29,7 @@ def token_command(args):
         "token": token,
         "fingerprint": fingerprint,
     }
-    with open(token_file, "w") as f:
+    with open(token_file, "w", encoding="utf-8") as f:
         json.dump(obj, f)
 
 
@@ -47,7 +46,7 @@ def create_command(args):
     if args.anonymous:
         token = None
     else:
-        with open(args.token) as f:
+        with open(args.token, encoding="utf-8") as f:
             token = json.load(f)["token"]
 
     client = GithubAPIClient(token)
@@ -196,7 +195,7 @@ class GithubAPIClient(object):
         """
         payload = {"description": description, "public": public, "files": {}}
         for path, gist_filename in paths_gist_filenames:
-            with io.open(path, encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 file_contents = f.read()
             print(path, gist_filename)
             payload["files"][gist_filename] = {"content": file_contents}
@@ -320,7 +319,7 @@ class ArgParserTestCase(unittest.TestCase):
 
 class ReadmeUsageTestCase(unittest.TestCase):
     def assertReadmeContainsOutput(self, args):
-        with io.open("README.rst", encoding="utf-8") as f:
+        with open("README.rst", encoding="utf-8") as f:
             readme = f.read()
 
         cmd_args = [sys.executable, "gistit.py"]
