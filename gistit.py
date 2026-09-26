@@ -70,7 +70,9 @@ def main():
     parser = make_parser()
     args = parser.parse_args()
     if args.command is None:
-        parser.print_help()
+        # Technically a usage error since the user didn't explicitly request
+        # --help... so do the stderr/exit(2) dance like a good Unix utility.
+        parser.print_help(sys.stderr)
         parser.exit(2)
     command = args.func
     sys.exit(command(args))
@@ -285,8 +287,8 @@ class UsageTestCase(unittest.TestCase):
         help_output_lines = help_output.splitlines()
         proc = self.run_gistit([], check=False)
 
-        noargs_output_lines = proc.stdout.splitlines()
-        noargs_stderr_output = proc.stderr
+        noargs_stdout_output = proc.stdout
+        noargs_stderr_lines = proc.stderr.splitlines()
         self.assertEqual(proc.returncode, 2)
-        self.assertEqual(noargs_output_lines, help_output_lines)
-        self.assertEqual(noargs_stderr_output, "")
+        self.assertEqual(noargs_stderr_lines, help_output_lines)
+        self.assertEqual(noargs_stdout_output, "")
