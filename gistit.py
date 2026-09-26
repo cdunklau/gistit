@@ -69,6 +69,9 @@ def make_parser():
 def main():
     parser = make_parser()
     args = parser.parse_args()
+    if args.command is None:
+        parser.print_help()
+        parser.exit(2)
     command = args.func
     sys.exit(command(args))
 
@@ -186,13 +189,6 @@ import unittest
 import subprocess
 
 
-def check_output(*args, **kwargs):
-    output = subprocess.check_output(*args, **kwargs)
-    if isinstance(output, bytes):
-        return output.decode("utf-8")
-    return output
-
-
 class PathGenerationTestCase(unittest.TestCase):
     def test_single_yields_only_filename(self):
         path = "/foo/bar.py"
@@ -256,24 +252,41 @@ class ArgParserTestCase(unittest.TestCase):
         self.assertTrue(args.contextual == True)
 
 
-class ReadmeUsageTestCase(unittest.TestCase):
-    def assertReadmeContainsOutput(self, args):
+class UsageTestCase(unittest.TestCase):
+    def run_gistit(self, args, **kwargs):
+        kwargs.setdefault("check", True)
+        kwargs.setdefault("capture_output", True)
+        kwargs.setdefault("encoding", "utf-8")
+        cmd_args = [sys.executable, "gistit.py", *args]
+        return subprocess.run(cmd_args, **kwargs)
+
+    def assert_readme_contains_help_output(self, help_output):
         with open("README.rst", encoding="utf-8") as f:
             readme = f.read()
 
-        cmd_args = [sys.executable, "gistit.py"]
-        cmd_args.extend(args)
-        output_lines = check_output(cmd_args).splitlines()
-        output_lines = [line.rstrip() for line in output_lines]
-        indented_output_lines = []
-        for line in output_lines:
+        help_lines = [line.rstrip() for line in help_output.splitlines()]
+        indented_help_lines = []
+        for line in help_lines:
             indented_line = "    " + line if line else ""
-            indented_output_lines.append(indented_line)
-        indented_output = "\n".join(indented_output_lines) + "\n"
-        self.assertIn(indented_output, readme)
+            indented_help_lines.append(indented_line)
+        indented_help_output = "\n".join(indented_help_lines) + "\n"
+        self.assertIn(indented_help_output, readme)
 
-    def test_general(self):
-        self.assertReadmeContainsOutput(["-h"])
+    def test_general_usage_in_readme(self):
+        help_output = self.run_gistit(["-h"]).stdout
+        self.assert_readme_contains_help_output(help_output)
 
-    def test_create(self):
-        self.assertReadmeContainsOutput(["create", "-h"])
+    def test_create_usage_in_readme(self):
+        help_output = self.run_gistit(["create", "-h"]).stdout
+        self.assert_readme_contains_help_output(help_output)
+
+    def test_no_args_outputs_help(self):
+        help_output = self.run_gistit(["--help"]).stdout
+        help_output_lines = help_output.splitlines()
+        proc = self.run_gistit([], check=False)
+
+        noargs_output_lines = proc.stdout.splitlines()
+        noargs_stderr_output = proc.stderr
+        self.assertEqual(proc.returncode, 2)
+        self.assertEqual(noargs_output_lines, help_output_lines)
+        self.assertEqual(noargs_stderr_output, "")
