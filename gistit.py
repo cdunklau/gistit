@@ -280,29 +280,13 @@ class UsageTestCase(unittest.TestCase):
         help_output = self.run_gistit(["create", "-h"]).stdout
         self.assert_readme_contains_help_output(help_output)
 
+    def test_no_args_outputs_help(self):
+        help_output = self.run_gistit(["--help"]).stdout
+        help_output_lines = help_output.splitlines()
+        proc = self.run_gistit([], check=False)
 
-class SimpleRun(unittest.TestCase):
-    def setUp(self):
-        cmd_args = [sys.executable, 'gistit.py', '--help']
-        self.help_output_lines = subprocess.Popen(
-            cmd_args,
-            stdout=subprocess.PIPE).communicate()[0].decode('utf-8').splitlines()[0]
-
-    def test_no_args(self):
-        cmd_args = [sys.executable, 'gistit.py']
-        proc = subprocess.Popen(
-            cmd_args,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        test_stdout, test_stderr = proc.communicate()
-        # using `stdout`/`stderr` because in `python2` the default help is raised
-        # by the parser, and it is written to `stderr`, while in `python3` we
-        # are using the parser to print help explicitly and it being written to stdout
-        test_output_line = ''
-        if test_stdout:
-            test_output_line = test_stdout.decode('utf-8').splitlines()[0]
-        else:
-            test_output_line = test_stderr.decode('utf-8').splitlines()[0]
+        noargs_output_lines = proc.stdout.splitlines()
+        noargs_stderr_output = proc.stderr
         self.assertEqual(proc.returncode, 2)
-        self.assertEqual(test_output_line, self.help_output_lines)
-
+        self.assertEqual(noargs_output_lines, help_output_lines)
+        self.assertEqual(noargs_stderr_output, "")
