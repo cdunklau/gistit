@@ -4,8 +4,6 @@ import os
 import json
 import pprint
 import argparse
-import getpass
-import uuid
 
 import requests
 
@@ -130,8 +128,7 @@ def _real_commonprefix(absolute_paths):
     candidate_prefix = os.path.commonprefix(absolute_paths)
     if candidate_prefix.endswith(os.sep):
         return candidate_prefix
-    else:
-        return candidate_prefix.rpartition(os.sep)[0] + os.sep
+    return candidate_prefix.rpartition(os.sep)[0] + os.sep
 
 
 class GithubAPIException(Exception):
@@ -146,7 +143,7 @@ def github_api_exception_to_stderr(message, exc):
     pprint.pprint(exc.context, stream=sys.stderr)
 
 
-class GithubAPIClient(object):
+class GithubAPIClient:
     def __init__(self, token):
         session = requests.Session()
         session.headers["content-type"] = "application/json"
@@ -247,11 +244,11 @@ class PathGenerationTestCase(unittest.TestCase):
 class ArgParserTestCase(unittest.TestCase):
     def test_create_parser_no_contextual(self):
         args = make_parser().parse_args(["create", "--no-contextual", "somefile"])
-        self.assertTrue(args.contextual == False)
+        self.assertIs(args.contextual, False)
 
     def test_create_parser_contextual(self):
         args = make_parser().parse_args(["create", "somefile"])
-        self.assertTrue(args.contextual == True)
+        self.assertIs(args.contextual, True)
 
 
 class UsageTestCase(unittest.TestCase):
