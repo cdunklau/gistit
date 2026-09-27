@@ -256,7 +256,7 @@ class UsageTestCase(unittest.TestCase):
         kwargs.setdefault("check", True)
         kwargs.setdefault("capture_output", True)
         kwargs.setdefault("encoding", "utf-8")
-        cmd_args = [sys.executable, "gistit.py", *args]
+        cmd_args = [sys.executable, "-m", "gistit", *args]
         return subprocess.run(cmd_args, **kwargs)
 
     def assert_readme_contains_help_output(self, help_output):

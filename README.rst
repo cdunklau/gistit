@@ -57,3 +57,19 @@ Create command::
                             Gist description
       --public, -p          Create as public gist
       --no-contextual, -C   Use normal filenames, without path context
+
+
+Development Setup
+=================
+
+Make sure you have Python 3.10 or higher, and create a venv with the dev
+dependencies::
+
+    python3 --version
+    python3 -m venv venv
+    venv/bin/pip install --upgrade pip
+    venv/bin/pip install --group dev
+
+Run tox for tests and formatting::
+
+    venv/bin/tox

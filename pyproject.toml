@@ -25,10 +25,13 @@ classifiers = [
     "Environment :: Console",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
+lint = [
+    "black >= 26.5.1, < 27.0",
+]
 dev = [
     "tox >= 4.59.0, < 5.0",
-    "black >= 26.5.1, < 27.0",
+    {include-group = "lint"},
 ]
 
 

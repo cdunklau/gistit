@@ -1,4 +1,9 @@
-env_list = ["3.10"]
+env_list = ["3.10", "fmt"]
 
 [env_run_base]
 commands = [["python", "-m", "unittest", "gistit"]]
+
+[env.fmt]
+dependency_groups = ["dev"]
+no_install = true
+commands = [["black", "src/gistit.py"]]
